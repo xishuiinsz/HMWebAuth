@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="./vue.js"></script>
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+
+
+    </div>
+</body>
+
+</html>
+<script>
+    let vm = new Vue({
+        el: '#app',
+        data: {
+
+        },
+        mounted() {
+            console.log(this);
+            window.addEventListener('offline',function(){
+                console.log(this);
+            }.bind(this))
+
+            // window.addEventListener('offline',offline.bind(this));
+
+            // function offline(){
+            //     console.log(this);
+            // }
+
+            //监视系统的online上线事件
+            window.ononline = function () {
+                console.log('ononline:' + this);
+            }
+        },
+    })
+</script>

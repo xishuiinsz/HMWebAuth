@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Web上网认证--黑马培训翻身(富源基础)校区</title>
+    <link rel="stylesheet" href="./bootstrap.min.css">
+    <script src="./vue.js"></script>
+    <script src="./axios.js"></script>
+    <style>
+        div.container {
+            padding: 0;
+            margin-top: 10px;
+            width: 420px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+
+        }
+
+
+        .params {
+            margin: 5px auto;
+            width: 380px;
+            height: 500px;
+            background-color:#ccc;
+            border-radius: 10px;
+            padding: 0 5px;
+        }
+
+
+        label {
+            margin-left: 2px;
+            margin-top: 10px;
+            margin-bottom: 0;
+        }
+
+
+        .butAction {
+            width: 300px;
+            margin: 10px auto;
+        }
+
+        span.label {
+            padding: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div id="webAuth" class="container">
+        <div class="butAction">
+            <button type="button" class="btn btn-info" :disabled="netStatus.isOnline" @click='dialup'>手动上线</button>
+            <span class="label label-success" v-if="netStatus.isOnline">网络正常</span>
+            <span class="label label-danger" v-else>网络断开</span>
+            <button type="button" class="btn btn-warning" :disabled="!netStatus.isOnline" @click='go2offline'>手动下线</button>
+        </div>
+        <div class="params">
+            <div class="form-group">
+                <label for="onlineServer">服务器地址</label>
+                <input type="text" class="form-control" id="onlineServer" v-model="this.gateway">
+            </div>
+            <form class="form-inline">
+                <div class="form-group">
+                    <label for="userName">用户</label>
+                    <input type="text" class="form-control" id="userName" v-model="logOn.userName">
+                </div>
+                <div class="form-group">
+                    <label for="userPass">密码</label>
+                    <input type="text" class="form-control" id="userPass" v-model="logOn.userPass">
+                </div>
+                <div class="form-group" v-if="isAutoMode">
+                    <label for="userCommand">操作</label>
+                    <input type="text" class="form-control" id="userCommand" v-model="logOn.userCommand">
+                </div>
+                <div class="form-group" v-else>
+                    <label for="userCommand">操作</label>
+                    <input type="text" class="form-control" id="userCommand" v-model="logOff.userCommand">
+                </div>
+                <ul>
+                    <li v-for="log in myLogs">{{log}}</li>
+                </ul>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
+<script>
+
+    var vm = new Vue({
+        el: '#webAuth',
+        data: {
+            isAutoMode: true, //默认为启用自动拨号上线功能 ;
+            gateway: 'http://172.16.64.1/goform/formWebAuthUserSubmit',
+            netStatus: {
+                localNetStatus: true, //本地网络状态
+                gatewayNetStatus: true, //与网关的连接状态 
+                isOnline: false, //初始化网络在线状态为不在线;
+            },
+            logOn: {
+                userName: 'qd27',
+                userPass: 'bdzl95e9',
+                userCommand: 'userAuth'
+            },
+            logOff: {
+                userCommand: 'logoff'
+            },
+            logs: ['日志记录:'],
+            //待测试服务器集合;
+            // testingServers: ['http://api.douban.com/v2/movie/top250']
+            testingServers: ['qq.com', 'sohu.com', 'baidu.com', 'iqiyi.com', '163.com']
+        },
+
+        methods: {
+            //定义【拨号】之函数
+            dialup: function () {
+                this.logs.push(new Date().toLocaleString() + '：开始拨号!');
+                return axios.get('./WebAuth.php?&gateway=' + this.gateway + '&userName=' + this.logOn.userName + '&userPasswd=' + this.logOn.userPass + '&userCommand=' + this.logOn.userCommand).then(response => {
+                    // console.log(response.data);
+                    if (response.data.code) {
+                        this.logs.push(new Date().toLocaleString() + '：' + response.data.msg);
+                        this.testIsOnline();
+                    } else {
+                        this.logs.push(new Date().toLocaleString() + '：拨号失败!');
+                    }
+                    return response.data.code;
+                })
+            },
+
+            //【手动下线】绑定的单击事件
+            go2offline: function () {
+                this.logs.push(new Date().toLocaleString() + '：手动下线操作开始!');
+                this.isAutoMode = false;
+                return axios.get('./WebAuth.php?&gateway=' + this.gateway + '&userCommand=' + this.logOff.userCommand).then(response => {
+                    if (response.data.code) {
+                        this.netStatus.isOnline = false;
+                        this.logs.push(new Date().toLocaleString() + '：手动下线操作完成!');
+                    }
+                    return response.data.code;
+                })
+
+            },
+
+            //互联网连接判断 
+            testIsOnline: function () {
+                this.logs.push(new Date().toLocaleString() + '：开始互联网连通检测!');
+                let randomServer = this.testingServers[Math.floor(Math.random() * this.testingServers.length)];
+                return axios.get('./WebAuth.php?userCommand=testing&testingServer=' + randomServer + '&gateway=' + this.gateway.substr(0, this.gateway.indexOf('/', 7))).then(response => {
+                    if (response.data.code) {
+                        this.netStatus.isOnline = true;
+                        this.logs.push(new Date().toLocaleString() + '：已成功连接互联网!');
+                    } else {
+                        this.logs.push(new Date().toLocaleString() + '：抱歉,无法连通互联网!');
+                        this.netStatus.isOnline = true;
+                    }
+                    return response.data.code;
+                })
+            },
+
+            //网关连接判断
+            isConnectedGateWay: function () {
+                this.logs.push(new Date().toLocaleString() + '：开始网关连接检测!');
+                return axios.get('./WebAuth.php?userCommand=gatewayTest&gateway=' + this.gateway.substr(0, this.gateway.indexOf('/', 7) + 1)).then(response => {
+                    if (response.data.code) {
+                        this.logs.push(new Date().toLocaleString() + '：网关连通检测通过!');
+                    } else {
+                        this.logs.push(new Date().toLocaleString() + '：网关连通检测失败,请联系网络管理员!');
+                    }
+                    return response.data.code;
+                })
+            },
+
+            //异步转同步连环检测网络状态
+            /*  promiseTesting: function () {
+                var _this = this;
+                new Promise(function (resolve, reject) {
+                    if (navigator.onLine)
+                        resolve(true);
+                    else
+                        resolve(false);
+                }).then(function (data) {
+                    if (data) {
+                        return _this.isConnectedGateWay();
+                    }
+                }).then(function (data) {
+                    if (data)
+                        return _this.testIsOnline();
+                }).then(function (data) {
+                    if (data) _this.isOnline = true;
+                    else _this.isOnline = false;
+                })
+            },
+            */
+        },
+        computed: {
+            //只向页面推送最近15条日志;
+            myLogs: function () {
+                return this.logs.slice(-15);
+            }
+        },
+        created() {
+
+            //vm实例创建后即开始[拨号]上网.
+            if (this.isAutoMode) this.dialup();
+
+            var _this = this;
+
+            //监视系统的offline离线事件
+            window.addEventListener('offline',function(){
+                this.logs.push(new Date().toLocaleString() + '：系统检测到本地网络断开！');
+                this.netStatus.isOnline = false;
+                this.netStatus.localNetStatus = false;
+            }.bind(this))
+
+
+            //监视系统的online上线事件
+            window.addEventListener('online',function(){
+                this.logs.push(new Date().toLocaleString() + '：系统检测到本地网络连接！');
+                this.netStatus.localNetStatus = true;
+            }.bind(this))
+
+
+        },
+        mounted() {
+            //后台监测互联网
+            (function watchDod() {
+                let randomServer = this.testingServers[Math.floor(Math.random() * this.testingServers.length)];
+                axios.get('./WebAuth.php?userCommand=watchDod&testingServer=' + randomServer).then(response => {
+                    if (!response.data.code) {
+                        this.logs.push(new Date().toLocaleString() + '：' + response.data.msg);
+                        this.dialup();
+                    }
+                })
+                setTimeout(watchDod.bind(this),5000); //强制让this指向Vue的当前实例
+            }).call(this)   //强制让this指向Vue的当前实例
+
+  
+        },
+        watch: {
+
+            //监测网络状态的变化
+            netStatus: {
+                handler: function (newVal, oldVal) {
+                    // console.log(this);
+                    if (!this.isAutoMode) return;
+                    if (this.netStatus.isOnline) return;
+                    this.dialup();
+                },
+                deep: true
+            }
+        }
+    })
+</script>
